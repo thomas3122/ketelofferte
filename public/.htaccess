@@ -1,0 +1,20 @@
+RewriteEngine On
+
+Options -Indexes
+
+<FilesMatch "^(\.env|\.gitignore|.*\.(csv|sql|md|log|bak|old|ini|sh|env|example))$">
+    Require all denied
+</FilesMatch>
+
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
+RewriteRule ^privacyverklaring/?$ privacyverklaring.php [L,QSA]
+RewriteRule ^cookieverklaring/?$ cookieverklaring.php [L,QSA]
+RewriteRule ^voorwaarden/?$ voorwaarden.php [L,QSA]
+RewriteRule ^kennisbank/([a-z0-9-]+)/?$ kennisbank/article.php?slug=$1 [L,QSA]
+RewriteRule ^([a-z0-9-]+)/?$ index.php [L,QSA]

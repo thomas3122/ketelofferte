@@ -1,0 +1,8 @@
+# KetelOfferte24.nl
+
+KetelOfferte24.nl is een Nederlandse website voor consumenten met cv-ketelproblemen. De belangrijkste conversie is een ingevulde ketelcheck/offerte-aanvraag via het formulier op de landingspagina's.
+
+Zie ook:
+- /regios/
+- /kennisbank/
+- /sitemap.xml
