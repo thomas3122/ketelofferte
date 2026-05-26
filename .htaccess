@@ -1,0 +1,38 @@
+RewriteEngine On
+
+Options -Indexes
+
+RewriteRule ^assets/(.*)$ public/assets/$1 [L]
+
+<FilesMatch "^(\.env|\.gitignore|.*\.(csv|sql|md|log|bak|old|ini|sh|env|example))$">
+    Require all denied
+</FilesMatch>
+
+RewriteRule ^(\.git|config|database|includes|storage)/ - [F,L]
+
+# Force trailing slash voor nette URL's
+# /moerwijk -> /moerwijk/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !\.[a-zA-Z0-9]{2,5}$
+RewriteCond %{REQUEST_URI} !/$
+RewriteRule ^(.+)$ /$1/ [R=301,L]
+
+# Sitemap dynamisch via PHP
+RewriteRule ^sitemap\.xml$ sitemap.php [L,QSA]
+RewriteRule ^privacyverklaring/?$ privacyverklaring.php [L,QSA]
+RewriteRule ^cookieverklaring/?$ cookieverklaring.php [L,QSA]
+RewriteRule ^voorwaarden/?$ voorwaarden.php [L,QSA]
+
+# Bestaande bestanden gewoon normaal laden
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^ - [L]
+
+# Bestaande mappen normaal laden
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^kennisbank/([a-z0-9-]+)/?$ kennisbank/article.php?slug=$1 [L,QSA]
+
+# Regionale landingspagina's naar index.php sturen
+RewriteRule ^([a-z0-9-]+)/?$ index.php [L,QSA]
