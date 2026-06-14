@@ -204,7 +204,9 @@ $problemCards = decode_landing_json_list($landingPage['problem_cards_json'] ?? n
   <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="stylesheet" href="/assets/css/ketelcheck.css">
 </head>
 <body class="<?= e($pageTheme['class']) ?>">
 <?php if (is_logged_in() && !empty($landingPage['id'])): ?>
@@ -325,39 +327,48 @@ $problemCards = decode_landing_json_list($landingPage['problem_cards_json'] ?? n
         <span>Geen verplichting</span>
       </div>
 
-      <div class="check-shell">
-        <aside class="check-aside">
-          <div>
-            <h3><?= e($checkAsideTitle) ?></h3>
-            <p><?= e($checkAsideText) ?></p>
+      <div class="ketelcheck-launch">
+        <h3><?= e($checkAsideTitle) ?></h3>
+        <p><?= e($checkAsideText) ?></p>
+        <button type="button" class="btn btn-primary btn-soft-attention" data-ketelcheck-open>
+          Start de gratis ketelcheck
+        </button>
+        <span class="ketelcheck-launch__hint">±1 minuut · <?= count($questions) ?> korte vragen · binnen 24 uur reactie</span>
+      </div>
+    </div>
+  </section>
+
+  <?php $checkSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>'; ?>
+  <div class="ko-cc" id="ketelcheckOverlay" hidden aria-hidden="true"<?= $leadError ? ' data-autostart="1"' : '' ?>>
+    <div class="ko-cc__sheet" role="dialog" aria-modal="true" aria-label="Ketelcheck">
+      <form
+        class="ko-cc__form"
+        id="ketelForm"
+        action="/actions/create_lead.php"
+        method="post"
+        enctype="multipart/form-data"
+        novalidate
+      >
+        <header class="ko-cc__head">
+          <div class="ko-cc__headtop">
+            <div class="ko-cc__brand">
+              <img src="/assets/img/logo.avif" alt="" width="28" height="28">
+              <span>Ketelcheck</span>
+            </div>
+            <button type="button" class="ko-cc__close" data-ketelcheck-close aria-label="Sluiten">
+              <i data-lucide="x"></i>
+            </button>
           </div>
-
-          <div>
-            <div class="progress-meta">
-              <span id="progressLabel">Stap 1 van <?= count($questions) ?></span>
-              <span id="progressPercent">17%</span>
+          <div class="ko-prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="ko-prog__top">
+              <span class="ko-prog__step" id="progressLabel">Stap 1 van <?= count($questions) ?></span>
+              <span class="ko-prog__pct" id="progressPercent">0%</span>
             </div>
-
-            <div class="progress-track" aria-hidden="true">
-              <div class="progress-bar" id="progressBar"></div>
-            </div>
-
-            <div class="aside-points">
-              <div><span>✓</span> Binnen 24 uur reactie</div>
-              <div><span>✓</span> Advies of passende offerte</div>
-              <div><span>✓</span> Gericht op <?= e($regionName) ?></div>
-            </div>
+            <div class="ko-prog__track"><div class="ko-prog__fill" id="progressBar"></div></div>
           </div>
-        </aside>
+        </header>
 
-        <form
-          class="form-card"
-          id="ketelForm"
-          action="/actions/create_lead.php"
-          method="post"
-          enctype="multipart/form-data"
-          novalidate
-        >
+        <main class="ko-cc__body" id="ketelcheckBody">
           <input type="hidden" name="landing_page_id" value="<?= e((string) ($landingPage['id'] ?? '')) ?>">
           <input type="hidden" name="landing_slug" value="<?= e((string) ($landingPage['slug'] ?? '')) ?>">
           <input type="hidden" name="landing_city" value="<?= e((string) ($landingPage['city'] ?? '')) ?>">
@@ -378,109 +389,139 @@ $problemCards = decode_landing_json_list($landingPage['problem_cards_json'] ?? n
             <?php endif; ?>
           <?php endforeach; ?>
 
-          <div id="stepsWrap">
-            <?php foreach ($questions as $index => $question): ?>
-              <?php
-                $stepNumber = (int) ($question['step'] ?? ($index + 1));
-                $isActive = $stepNumber === 1;
-              ?>
-
-              <section class="form-step <?= $isActive ? 'active' : '' ?>" data-step="<?= $stepNumber ?>">
-                <span class="step-kicker">Stap <?= $stepNumber ?></span>
-
-                <h3 class="step-title"><?= e($question['label']) ?></h3>
-
+          <?php foreach ($questions as $index => $question): ?>
+            <?php
+              $stepNumber = (int) ($question['step'] ?? ($index + 1));
+              $isActive = $stepNumber === 1;
+            ?>
+            <section class="ko-cc__step <?= $isActive ? 'active' : '' ?>" data-step="<?= $stepNumber ?>">
+              <div class="ko-cc__q">
+                <h2 class="ko-cc__title"><?= e($question['label']) ?></h2>
                 <?php if (!empty($question['help_text'])): ?>
-                  <p class="step-help"><?= e($question['help_text']) ?></p>
+                  <p class="ko-cc__sub"><?= e($question['help_text']) ?></p>
                 <?php endif; ?>
+              </div>
 
-                <?php if (($question['type'] ?? '') === 'options'): ?>
-                  <div class="option-grid" data-option-group="<?= e($question['key']) ?>">
-                    <?php foreach (($question['options'] ?? []) as $option): ?>
-                      <button
-                        type="button"
-                        class="option-card"
-                        data-value="<?= e($option['value']) ?>"
-                        data-label="<?= e($option['label']) ?>"
-                      >
-                        <span class="option-icon"><?= e($option['icon'] ?? '') ?></span>
-                        <?= e($option['label']) ?>
-                      </button>
-                    <?php endforeach; ?>
-                  </div>
-                <?php endif; ?>
-
-                <?php if (($question['type'] ?? '') === 'fields'): ?>
-                  <div class="field-grid">
-                    <?php foreach (($question['fields'] ?? []) as $field): ?>
-                      <?php
-                        $fieldType = $field['type'] ?? 'text';
-                        $fieldKey = $field['key'] ?? '';
-                        $inputName = $fieldKey;
-
-                        if ($fieldType === 'file' && !empty($field['multiple'])) {
-                            $inputName .= '[]';
-                        }
-                      ?>
-
-                      <div class="field <?= !empty($field['full_width']) ? 'full' : '' ?>">
-                        <label for="<?= e($fieldKey) ?>"><?= e($field['label']) ?></label>
-
-                        <?php if ($fieldType === 'file'): ?>
-                          <input
-                            id="<?= e($fieldKey) ?>"
-                            name="<?= e($inputName) ?>"
-                            type="file"
-                            accept="<?= e($field['accept'] ?? '') ?>"
-                            <?= !empty($field['multiple']) ? 'multiple' : '' ?>
-                            <?= !empty($field['required']) ? 'required' : '' ?>
-                          >
-                        <?php elseif ($fieldType === 'textarea'): ?>
-                          <textarea
-                            id="<?= e($fieldKey) ?>"
-                            name="<?= e($fieldKey) ?>"
-                            placeholder="<?= e($field['placeholder'] ?? '') ?>"
-                            <?= !empty($field['required']) ? 'required' : '' ?>
-                          ></textarea>
+              <?php if (($question['type'] ?? '') === 'options'): ?>
+                <?php $layout = ($question['layout'] ?? 'tile'); $cols = $layout === 'row' ? 1 : 2; ?>
+                <div class="ko-cc__opts" data-option-group="<?= e($question['key']) ?>" data-cols="<?= $cols ?>">
+                  <?php foreach (($question['options'] ?? []) as $option): ?>
+                    <button
+                      type="button"
+                      class="ko-opt ko-opt--<?= e($layout) ?>"
+                      data-value="<?= e($option['value']) ?>"
+                      data-label="<?= e($option['label']) ?>"
+                      aria-pressed="false"
+                    >
+                      <span class="ko-opt__icon">
+                        <?php if (!empty($option['num'])): ?>
+                          <span class="ko-cc-num"><?= e($option['num']) ?></span>
                         <?php else: ?>
+                          <i data-lucide="<?= e($option['lucide'] ?? 'circle-help') ?>"></i>
+                        <?php endif; ?>
+                      </span>
+                      <span class="ko-opt__body">
+                        <span class="ko-opt__label"><?= e($option['label']) ?></span>
+                        <?php if (!empty($option['desc'])): ?>
+                          <span class="ko-opt__desc"><?= e($option['desc']) ?></span>
+                        <?php endif; ?>
+                      </span>
+                      <span class="ko-opt__check"><?= $checkSvg ?></span>
+                    </button>
+                  <?php endforeach; ?>
+                </div>
+
+              <?php elseif (($question['key'] ?? '') === 'fotos_toelichting'): ?>
+                <div class="ko-cc__media">
+                  <label class="ko-cc__drop">
+                    <span class="ko-cc__dropicon"><i data-lucide="camera"></i></span>
+                    <span class="ko-cc__droptitle">Foto’s toevoegen</span>
+                    <span class="ko-cc__drophint">Ketel, typeplaatje, leidingen of lekkage — tik om te kiezen</span>
+                    <input type="file" id="photos" name="photos[]" accept="image/jpeg,image/png,image/webp" multiple hidden>
+                  </label>
+                  <div class="ko-cc__filelist" id="photoList"></div>
+                  <div class="ko-field">
+                    <label class="ko-field__label" for="message">Extra toelichting</label>
+                    <textarea class="ko-input" id="message" name="message" rows="3" placeholder="Bijv. foutcode, geluid, of wanneer het probleem begon."></textarea>
+                    <span class="ko-field__hint">Niet verplicht. Alles wat u invult helpt bij de beoordeling.</span>
+                  </div>
+                </div>
+
+              <?php elseif (($question['key'] ?? '') === 'contact'): ?>
+                <?php $rowFields = []; ?>
+                <div class="ko-cc__contact">
+                  <?php foreach (($question['fields'] ?? []) as $field): ?>
+                    <?php
+                      $fk = $field['key'] ?? '';
+                      if (in_array($fk, ['postcode', 'plaats'], true)) { $rowFields[] = $field; continue; }
+                    ?>
+                    <div class="ko-field">
+                      <label class="ko-field__label" for="<?= e($fk) ?>">
+                        <?= e($field['label']) ?><?php if (!empty($field['required'])): ?><span class="ko-field__req">*</span><?php endif; ?>
+                      </label>
+                      <div class="ko-inputwrap<?= !empty($field['lucide']) ? ' ko-inputwrap--icon' : '' ?>">
+                        <?php if (!empty($field['lucide'])): ?>
+                          <span class="ko-inputwrap__icon"><i data-lucide="<?= e($field['lucide']) ?>"></i></span>
+                        <?php endif; ?>
+                        <input
+                          class="ko-input"
+                          id="<?= e($fk) ?>"
+                          name="<?= e($fk) ?>"
+                          type="<?= e($field['type'] ?? 'text') ?>"
+                          placeholder="<?= e($field['placeholder'] ?? '') ?>"
+                          autocomplete="<?= e($field['autocomplete'] ?? '') ?>"
+                          <?= !empty($field['required']) ? 'required' : '' ?>
+                        >
+                      </div>
+                    </div>
+                  <?php endforeach; ?>
+
+                  <?php if ($rowFields): ?>
+                    <div class="ko-cc__row2">
+                      <?php foreach ($rowFields as $field): ?>
+                        <div class="ko-field">
+                          <label class="ko-field__label" for="<?= e($field['key']) ?>">
+                            <?= e($field['label']) ?><?php if (!empty($field['required'])): ?><span class="ko-field__req">*</span><?php endif; ?>
+                          </label>
                           <input
-                            id="<?= e($fieldKey) ?>"
-                            name="<?= e($fieldKey) ?>"
-                            type="<?= e($fieldType) ?>"
+                            class="ko-input"
+                            id="<?= e($field['key']) ?>"
+                            name="<?= e($field['key']) ?>"
+                            type="<?= e($field['type'] ?? 'text') ?>"
                             placeholder="<?= e($field['placeholder'] ?? '') ?>"
                             autocomplete="<?= e($field['autocomplete'] ?? '') ?>"
                             <?= !empty($field['required']) ? 'required' : '' ?>
                           >
-                        <?php endif; ?>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                  <?php endif; ?>
 
-                        <?php if (!empty($field['helper'])): ?>
-                          <p class="field-helper"><?= e($field['helper']) ?></p>
-                        <?php endif; ?>
-                      </div>
-                    <?php endforeach; ?>
-                  </div>
-                <?php endif; ?>
-              </section>
-            <?php endforeach; ?>
+                  <p class="ko-cc__legal">
+                    Door de ketelcheck te versturen verwerken we uw gegevens om uw aanvraag te behandelen.
+                    Lees onze <a href="/privacyverklaring/">privacyverklaring</a>.
+                  </p>
+                </div>
+              <?php endif; ?>
+            </section>
+          <?php endforeach; ?>
+
+          <div class="error-message" id="errorMessage" role="alert"><?= $leadError ? e($leadError) : '' ?></div>
+        </main>
+
+        <footer class="ko-cc__foot">
+          <div class="ko-cc__reassure">
+            <i data-lucide="shield-check"></i>
+            <span>Gratis · Geen verplichting · Binnen 24 uur reactie</span>
           </div>
-
-          <p class="form-privacy-note">
-            Door de ketelcheck te versturen verwerken we uw gegevens om uw aanvraag te behandelen.
-            Lees onze <a href="/privacyverklaring/">privacyverklaring</a>.
-          </p>
-
-          <div class="error-message" id="errorMessage" role="alert">
-            <?= $leadError ? e($leadError) : '' ?>
+          <div class="ko-cc__nav">
+            <button type="button" class="ko-btn ko-btn--ghost" id="prevBtn"><i data-lucide="chevron-left"></i><span>Sluiten</span></button>
+            <button type="button" class="ko-btn ko-btn--primary ko-btn--lg" id="nextBtn"><span>Volgende</span><i data-lucide="chevron-right"></i></button>
           </div>
-
-          <div class="form-actions" id="formActions">
-            <button type="button" class="btn btn-ghost" id="prevBtn">Vorige</button>
-            <button type="button" class="btn btn-primary" id="nextBtn">Volgende</button>
-          </div>
-        </form>
-      </div>
+        </footer>
+      </form>
     </div>
-  </section>
+  </div>
 
   <?php if (!empty($landingPage['seo_content_html'])): ?>
     <section class="section section-soft" aria-labelledby="seo-content-title">
@@ -790,6 +831,7 @@ $problemCards = decode_landing_json_list($landingPage['problem_cards_json'] ?? n
 
 <?= cookie_banner_html() ?>
 <script src="/assets/js/legal-consent.js"></script>
+<script src="/assets/js/lucide.min.js"></script>
 <script src="/assets/js/app.js"></script>
 </body>
 </html>
