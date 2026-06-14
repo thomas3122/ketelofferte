@@ -1,61 +1,122 @@
+/* ============================================================
+   Ketelcheck — fullscreen wizard
+   ============================================================ */
+const overlay = document.getElementById('ketelcheckOverlay');
 const form = document.getElementById('ketelForm');
-const steps = Array.from(document.querySelectorAll('.form-step'));
+const body = document.getElementById('ketelcheckBody');
+const steps = Array.from(document.querySelectorAll('.ko-cc__step'));
 const nextBtn = document.getElementById('nextBtn');
 const prevBtn = document.getElementById('prevBtn');
 const errorMessage = document.getElementById('errorMessage');
 const progressBar = document.getElementById('progressBar');
 const progressLabel = document.getElementById('progressLabel');
 const progressPercent = document.getElementById('progressPercent');
-const ketelcheckSection = document.getElementById('ketelcheck');
 
 let currentStep = 1;
 const totalSteps = steps.length;
+let lastTrigger = null;
+let advanceTimer = null;
 
-if (ketelcheckSection && 'IntersectionObserver' in window) {
-  const checkObserver = new IntersectionObserver((entries) => {
-    const isVisible = entries.some((entry) => entry.isIntersecting);
-    document.body.classList.toggle('is-check-visible', isVisible);
-  }, {
-    rootMargin: '-18% 0px -36% 0px',
-    threshold: 0.01
-  });
-
-  checkObserver.observe(ketelcheckSection);
+/* ---- Lucide icons ---- */
+function renderIcons() {
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
 }
 
-if (form) {
-  form.addEventListener('focusin', () => {
-    document.body.classList.add('is-form-focused');
-  });
+/* ---- Open / close overlay ---- */
+function openOverlay(trigger) {
+  if (!overlay) return;
 
-  form.addEventListener('focusout', () => {
-    window.setTimeout(() => {
-      if (!form.contains(document.activeElement)) {
-        document.body.classList.remove('is-form-focused');
-      }
-    }, 80);
-  });
+  lastTrigger = trigger || null;
+  overlay.hidden = false;
+  overlay.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('ko-cc-open');
+  renderIcons();
+  updateStep();
+
+  const focusTarget = getCurrentStepElement()?.querySelector('.ko-opt, .ko-input') || prevBtn;
+  if (focusTarget) {
+    window.setTimeout(() => focusTarget.focus({ preventScroll: true }), 40);
+  }
 }
 
+function closeOverlay() {
+  if (!overlay) return;
+
+  window.clearTimeout(advanceTimer);
+  overlay.hidden = true;
+  overlay.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('ko-cc-open');
+
+  if (lastTrigger && typeof lastTrigger.focus === 'function') {
+    lastTrigger.focus({ preventScroll: true });
+  }
+}
+
+/* Any "start" CTA opens the wizard; keep #ketelcheck anchors working too. */
+document.querySelectorAll('[data-ketelcheck-open], a[href="#ketelcheck"], a[href$="#ketelcheck"]').forEach((el) => {
+  el.addEventListener('click', (event) => {
+    if (!overlay) return;
+    event.preventDefault();
+    openOverlay(el);
+  });
+});
+
+document.querySelectorAll('[data-ketelcheck-close]').forEach((el) => {
+  el.addEventListener('click', closeOverlay);
+});
+
+/* ---- Option selection (single-choice + auto advance) ---- */
 document.querySelectorAll('[data-option-group]').forEach((group) => {
   const groupName = group.dataset.optionGroup;
-  const buttons = Array.from(group.querySelectorAll('.option-card'));
+  const buttons = Array.from(group.querySelectorAll('.ko-opt'));
   const hiddenInput = document.getElementById(`input_${groupName}`);
 
   buttons.forEach((button) => {
     button.addEventListener('click', () => {
-      buttons.forEach((btn) => btn.classList.remove('selected'));
-
-      button.classList.add('selected');
+      buttons.forEach((btn) => btn.setAttribute('aria-pressed', 'false'));
+      button.setAttribute('aria-pressed', 'true');
 
       if (hiddenInput) {
         hiddenInput.value = button.dataset.value;
       }
 
       errorMessage.textContent = '';
+
+      window.clearTimeout(advanceTimer);
+      if (currentStep < totalSteps) {
+        advanceTimer = window.setTimeout(() => {
+          currentStep += 1;
+          updateStep();
+        }, 300);
+      }
     });
   });
 });
+
+/* ---- Photo file list ---- */
+const photoInput = document.getElementById('photos');
+const photoList = document.getElementById('photoList');
+
+if (photoInput && photoList) {
+  photoInput.addEventListener('change', () => {
+    photoList.innerHTML = '';
+    Array.from(photoInput.files).forEach((file) => {
+      const row = document.createElement('div');
+      row.className = 'ko-cc__file';
+      row.innerHTML = '<i data-lucide="image"></i><span></span>';
+      row.querySelector('span').textContent = file.name;
+      photoList.appendChild(row);
+    });
+    renderIcons();
+  });
+}
+
+/* ---- Step navigation + progress ---- */
+function getCurrentStepElement() {
+  return steps.find((step) => Number(step.dataset.step) === currentStep);
+}
 
 function updateStep() {
   steps.forEach((step) => {
@@ -64,59 +125,29 @@ function updateStep() {
 
   const percentage = Math.round((currentStep / totalSteps) * 100);
 
-  progressBar.style.width = `${percentage}%`;
-  progressLabel.textContent = `Stap ${currentStep} van ${totalSteps}`;
-  progressPercent.textContent = `${percentage}%`;
+  if (progressBar) progressBar.style.width = `${percentage}%`;
+  if (progressLabel) progressLabel.textContent = `Stap ${currentStep} van ${totalSteps}`;
+  if (progressPercent) progressPercent.textContent = `${percentage}%`;
 
-  prevBtn.style.visibility = currentStep === 1 ? 'hidden' : 'visible';
-  nextBtn.textContent = currentStep === totalSteps ? 'Ontvang advies/offerte' : 'Volgende';
+  const prevLabel = prevBtn.querySelector('span');
+  if (prevLabel) prevLabel.textContent = currentStep === 1 ? 'Sluiten' : 'Vorige';
+
+  const nextLabel = nextBtn.querySelector('span');
+  if (nextLabel) nextLabel.textContent = currentStep === totalSteps ? 'Verstuur ketelcheck' : 'Volgende';
 
   errorMessage.textContent = '';
-}
 
-function getCurrentStepElement() {
-  return steps.find((step) => Number(step.dataset.step) === currentStep);
-}
-
-function scrollToCurrentQuestion() {
-  const isDesktop = window.innerWidth >= 900;
-
-  if (isDesktop) {
-    document.getElementById('ketelcheck').scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    });
-
-    return;
-  }
-
-  const activeStep = getCurrentStepElement();
-
-  if (!activeStep) {
-    return;
-  }
-
-  const stepTitle = activeStep.querySelector('.step-title');
-
-  if (!stepTitle) {
-    activeStep.scrollIntoView({
-      behavior: 'smooth',
-      block: 'start'
-    });
-    return;
-  }
-
-  const offset = 88;
-  const titlePosition = stepTitle.getBoundingClientRect().top + window.scrollY - offset;
-
-  window.scrollTo({
-    top: titlePosition,
-    behavior: 'smooth'
-  });
+  if (body) body.scrollTop = 0;
 }
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function getInputLabel(field) {
+  const label = field.closest('.ko-field')?.querySelector('.ko-field__label');
+  if (!label) return 'dit veld';
+  return label.textContent.replace('*', '').trim().toLowerCase();
 }
 
 function validateCurrentStep() {
@@ -129,9 +160,7 @@ function validateCurrentStep() {
   const optionGroup = step.querySelector('[data-option-group]');
 
   if (optionGroup) {
-    const groupName = optionGroup.dataset.optionGroup;
-    const hiddenInput = document.getElementById(`input_${groupName}`);
-
+    const hiddenInput = document.getElementById(`input_${optionGroup.dataset.optionGroup}`);
     if (!hiddenInput || hiddenInput.value.trim() === '') {
       return 'Maak eerst een keuze.';
     }
@@ -144,7 +173,6 @@ function validateCurrentStep() {
       if (!field.files || field.files.length === 0) {
         return `Voeg ${getInputLabel(field)} toe.`;
       }
-
       continue;
     }
 
@@ -162,17 +190,9 @@ function validateCurrentStep() {
   return '';
 }
 
-function getInputLabel(field) {
-  const label = field.closest('.field')?.querySelector('label');
-
-  if (!label) {
-    return 'dit veld';
-  }
-
-  return label.textContent.toLowerCase();
-}
-
 nextBtn.addEventListener('click', () => {
+  window.clearTimeout(advanceTimer);
+
   const validationError = validateCurrentStep();
 
   if (validationError) {
@@ -183,8 +203,6 @@ nextBtn.addEventListener('click', () => {
   if (currentStep < totalSteps) {
     currentStep += 1;
     updateStep();
-    scrollToCurrentQuestion();
-
     return;
   }
 
@@ -199,15 +217,36 @@ nextBtn.addEventListener('click', () => {
 });
 
 prevBtn.addEventListener('click', () => {
-  if (currentStep > 1) {
-    currentStep -= 1;
-    updateStep();
-    scrollToCurrentQuestion();
+  window.clearTimeout(advanceTimer);
+
+  if (currentStep === 1) {
+    closeOverlay();
+    return;
+  }
+
+  currentStep -= 1;
+  updateStep();
+});
+
+document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && overlay && !overlay.hidden) {
+    closeOverlay();
   }
 });
 
-updateStep();
+/* On load: render icons; auto-open when the server returned an error. */
+renderIcons();
 
+if (overlay) {
+  updateStep();
+  if (overlay.dataset.autostart === '1') {
+    openOverlay();
+  }
+}
+
+/* ============================================================
+   Spoed-modal
+   ============================================================ */
 const emergencyModal = document.getElementById('emergencyModal');
 const openEmergencyModal = document.getElementById('openEmergencyModal');
 const closeEmergencyModal = document.getElementById('closeEmergencyModal');
@@ -215,7 +254,6 @@ const modalStartCheck = document.getElementById('modalStartCheck');
 
 function showEmergencyModal() {
   if (!emergencyModal) return;
-
   emergencyModal.classList.add('active');
   emergencyModal.setAttribute('aria-hidden', 'false');
   document.body.classList.add('modal-open');
@@ -223,7 +261,6 @@ function showEmergencyModal() {
 
 function hideEmergencyModal() {
   if (!emergencyModal) return;
-
   emergencyModal.classList.remove('active');
   emergencyModal.setAttribute('aria-hidden', 'true');
   document.body.classList.remove('modal-open');
@@ -238,7 +275,10 @@ if (closeEmergencyModal) {
 }
 
 if (modalStartCheck) {
-  modalStartCheck.addEventListener('click', hideEmergencyModal);
+  modalStartCheck.addEventListener('click', () => {
+    hideEmergencyModal();
+    openOverlay(modalStartCheck);
+  });
 }
 
 if (emergencyModal) {
