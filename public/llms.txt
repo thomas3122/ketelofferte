@@ -1,0 +1,18 @@
+# KetelOfferte24.nl
+
+KetelOfferte24.nl is een Nederlandse website voor consumenten met cv-ketelproblemen. De belangrijkste conversie is een ingevulde ketelcheck/offerte-aanvraag via het formulier op de landingspagina's.
+
+## Belangrijke onderdelen
+
+- `/` en lokale slugpagina's: cv-ketel hulp, ketelcheck en offerte-aanvragen.
+- `/regios/`: overzicht van actieve regio- en plaats-landingspagina's.
+- `/kennisbank/`: uitleg over cv-ketel storing, lekkage, geen warm water, drukverlies, onderhoud en vervangen.
+- `/sitemap.xml`: XML sitemap met actieve landingspagina's en kennisbankartikelen.
+
+## Formulier
+
+De ketelcheck vraagt naar probleemtype, gewenste hulp, urgentie, verwarming, warm water, leeftijd van de ketel, foto's/toelichting en contactgegevens. Deze vragen helpen bij conversie en offertekwaliteit.
+
+## Aanbod
+
+KetelOfferte24.nl helpt bezoekers snel duidelijkheid krijgen over repareren, onderhoud of vervangen van een cv-ketel. De site richt zich primair op Zuid-Holland en lokale landingspagina's.
