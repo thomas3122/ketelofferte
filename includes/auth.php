@@ -7,9 +7,40 @@ function is_logged_in(): bool
         && hash_equals($_SESSION['admin_login_fingerprint'], admin_session_fingerprint());
 }
 
+const ADMIN_SESSION_IDLE_TIMEOUT = 7200;      // 2 uur inactiviteit
+const ADMIN_SESSION_ABSOLUTE_TIMEOUT = 43200; // 12 uur absolute levensduur
+
+function destroy_admin_session(string $reason = 'expired'): void
+{
+    $_SESSION = [];
+    session_regenerate_id(true);
+    $_SESSION['login_error'] = $reason === 'expired'
+        ? 'Uw sessie is verlopen. Log opnieuw in.'
+        : 'U bent uitgelogd.';
+}
+
+function enforce_admin_session_timeout(): bool
+{
+    $now = time();
+    $lastActivity = (int) ($_SESSION['admin_last_activity'] ?? $now);
+    $startedAt = (int) ($_SESSION['admin_session_started_at'] ?? $now);
+
+    if (
+        ($now - $lastActivity) > ADMIN_SESSION_IDLE_TIMEOUT
+        || ($now - $startedAt) > ADMIN_SESSION_ABSOLUTE_TIMEOUT
+    ) {
+        destroy_admin_session('expired');
+        return false;
+    }
+
+    $_SESSION['admin_last_activity'] = $now;
+
+    return true;
+}
+
 function require_admin_login(): void
 {
-    if (!is_logged_in()) {
+    if (!is_logged_in() || !enforce_admin_session_timeout()) {
         header('Location: /admin/login.php');
         exit;
     }

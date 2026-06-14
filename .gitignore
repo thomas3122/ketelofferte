@@ -1,2 +1,12 @@
 .env
 /storage/uploads/
+/storage/cache/
+
+# OS-rommel
+.DS_Store
+
+# Data-exports en back-up-/oude bestanden horen niet in de repo
+/landing-pages-*.csv
+*.old
+* - old
+*.bak

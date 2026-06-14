@@ -1,0 +1,10 @@
+# Defense in depth: deze map mag nooit direct via het web bereikbaar zijn.
+# De applicatiecode hoort buiten de document-root (public/) te draaien;
+# dit blokkeert toegang ook als de document-root ooit verkeerd wordt gezet.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

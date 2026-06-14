@@ -163,6 +163,18 @@ if (!verify_csrf_token($_POST['csrf_token'] ?? null) || clean_string($_POST['web
     exit;
 }
 
+// Rate limiting tegen geautomatiseerde spam-leads: max 10 inzendingen per IP per uur.
+$leadRateKey = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+$leadRateWindow = 3600;
+
+if (!rate_limit_allow('lead_attempts', $leadRateKey, 10, $leadRateWindow)) {
+    $_SESSION['lead_error'] = 'U heeft te veel aanvragen verstuurd. Probeer het later opnieuw of bel ons.';
+    header('Location: ' . $errorRedirect);
+    exit;
+}
+
+rate_limit_hit('lead_attempts', $leadRateKey, $leadRateWindow);
+
 $naam = clean_string($_POST['naam'] ?? '');
 $telefoon = clean_string($_POST['telefoon'] ?? '');
 $email = clean_string($_POST['email'] ?? '');

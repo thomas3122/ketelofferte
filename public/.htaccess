@@ -2,6 +2,12 @@ RewriteEngine On
 
 Options -Indexes
 
+# Verberg server-/PHP-versie (LiteSpeed voegt X-Powered-By zelf toe)
+<IfModule mod_headers.c>
+    Header always unset X-Powered-By
+    Header unset X-Powered-By
+</IfModule>
+
 <FilesMatch "^(\.env|\.gitignore|.*\.(csv|sql|md|log|bak|old|ini|sh|env|example))$">
     Require all denied
 </FilesMatch>

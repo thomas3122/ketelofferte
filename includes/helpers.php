@@ -1,6 +1,62 @@
 <?php
 declare(strict_types=1);
 
+/**
+ * Eenvoudige, bestand-gebaseerde rate limiter voor publieke endpoints.
+ * Geeft true terug zolang het aantal pogingen binnen het tijdvenster onder
+ * $maxAttempts blijft. Roep daarna rate_limit_hit() aan om een poging te tellen.
+ */
+function rate_limit_dir(string $bucket): string
+{
+    $safeBucket = preg_replace('/[^a-z0-9_-]/i', '', $bucket) ?: 'default';
+    $dir = dirname(__DIR__) . '/storage/cache/' . $safeBucket;
+
+    if (!is_dir($dir)) {
+        mkdir($dir, 0755, true);
+    }
+
+    return $dir;
+}
+
+function rate_limit_path(string $bucket, string $key): string
+{
+    return rate_limit_dir($bucket) . '/' . hash('sha256', $key) . '.json';
+}
+
+function rate_limit_state(string $bucket, string $key, int $windowSeconds): array
+{
+    $path = rate_limit_path($bucket, $key);
+
+    if (!is_file($path)) {
+        return ['count' => 0, 'first_at' => time()];
+    }
+
+    $data = json_decode((string) file_get_contents($path), true);
+
+    if (!is_array($data) || (($data['first_at'] ?? 0) < time() - $windowSeconds)) {
+        return ['count' => 0, 'first_at' => time()];
+    }
+
+    return [
+        'count' => (int) ($data['count'] ?? 0),
+        'first_at' => (int) ($data['first_at'] ?? time()),
+    ];
+}
+
+function rate_limit_allow(string $bucket, string $key, int $maxAttempts, int $windowSeconds): bool
+{
+    $state = rate_limit_state($bucket, $key, $windowSeconds);
+
+    return $state['count'] < $maxAttempts;
+}
+
+function rate_limit_hit(string $bucket, string $key, int $windowSeconds): void
+{
+    $state = rate_limit_state($bucket, $key, $windowSeconds);
+    $state['count']++;
+    file_put_contents(rate_limit_path($bucket, $key), json_encode($state), LOCK_EX);
+}
+
 function get_current_slug(): ?string
 {
     $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
@@ -548,7 +604,7 @@ function get_reviews_structured_data(array $reviews, string $canonicalUrl): stri
         ];
     }
 
-    return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    return json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 }
 
 function decode_landing_json_list(?string $json, array $fallback): array
@@ -671,5 +727,5 @@ function get_structured_data(array $landingPage, string $canonicalUrl): string
         ];
     }
 
-    return json_encode($data, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+    return json_encode($data, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 }

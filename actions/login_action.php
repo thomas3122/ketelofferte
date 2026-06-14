@@ -117,6 +117,8 @@ $_SESSION['admin_username'] = $user['username'];
 $_SESSION['admin_full_name'] = $user['full_name'] ?: $user['username'];
 $_SESSION['admin_role'] = $user['role'];
 $_SESSION['admin_login_fingerprint'] = admin_session_fingerprint();
+$_SESSION['admin_session_started_at'] = time();
+$_SESSION['admin_last_activity'] = time();
 unset($_SESSION['csrf_token']);
 
 $updateStmt = $pdo->prepare("
